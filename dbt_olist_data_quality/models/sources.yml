@@ -1,0 +1,156 @@
+version: 2
+
+sources:
+  - name: olist_raw
+    description: "Raw Olist Brazil E-commerce dataset from CSV files"
+    database: "sunlit-flag-468216-j9"
+    schema: "olist_staging"
+    tables:
+      - name: customers
+        identifier: public_olist_customers_dataset
+        description: "Customer data with geographic information"
+        columns:
+          - name: customer_id
+            description: "Unique customer identifier"
+          - name: customer_unique_id
+            description: "Customer unique ID for deduplication"
+          - name: customer_zip_code_prefix
+            description: "Customer zip code (first 5 digits)"
+          - name: customer_city
+            description: "Customer city name"
+          - name: customer_state
+            description: "Customer state code"
+            
+      - name: geolocation
+        identifier: public_olist_geolocation_dataset
+        description: "Geolocation data for Brazilian zip codes"
+        columns:
+          - name: geolocation_zip_code_prefix
+            description: "Zip code (first 5 digits)"
+          - name: geolocation_lat
+            description: "Latitude coordinate"
+          - name: geolocation_lng
+            description: "Longitude coordinate"
+          - name: geolocation_city
+            description: "City name"
+          - name: geolocation_state
+            description: "State code"
+            
+      - name: orders
+        identifier: public_olist_orders_dataset
+        description: "Order data with status and timestamps"
+        columns:
+          - name: order_id
+            description: "Unique order identifier"
+          - name: customer_id
+            description: "Customer identifier (FK)"
+          - name: order_status
+            description: "Order status"
+          - name: order_purchase_timestamp
+            description: "Order purchase timestamp"
+          - name: order_approved_at
+            description: "Order approval timestamp"
+          - name: order_delivered_carrier_date
+            description: "Order delivered to carrier timestamp"
+          - name: order_delivered_customer_date
+            description: "Order delivered to customer timestamp"
+          - name: order_estimated_delivery_date
+            description: "Estimated delivery date"
+            
+      - name: order_items
+        identifier: public_olist_order_items_dataset
+        description: "Order line items with products and pricing"
+        columns:
+          - name: order_id
+            description: "Order identifier (FK)"
+          - name: order_item_id
+            description: "Item sequence within order"
+          - name: product_id
+            description: "Product identifier (FK)"
+          - name: seller_id
+            description: "Seller identifier (FK)"
+          - name: shipping_limit_date
+            description: "Shipping limit date"
+          - name: price
+            description: "Item price"
+          - name: freight_value
+            description: "Freight cost"
+            
+      - name: order_payments
+        identifier: public_olist_order_payments_dataset
+        description: "Payment data for orders"
+        columns:
+          - name: order_id
+            description: "Order identifier (FK)"
+          - name: payment_sequential
+            description: "Payment sequence within order"
+          - name: payment_type
+            description: "Payment method"
+          - name: payment_installments
+            description: "Number of installments"
+          - name: payment_value
+            description: "Payment amount"
+            
+      - name: order_reviews
+        identifier: public_olist_order_reviews_dataset
+        description: "Customer reviews for orders"
+        columns:
+          - name: review_id
+            description: "Review identifier"
+          - name: order_id
+            description: "Order identifier (FK)"
+          - name: review_score
+            description: "Review score (1-5)"
+          - name: review_comment_title
+            description: "Review title"
+          - name: review_comment_message
+            description: "Review message"
+          - name: review_creation_date
+            description: "Review creation timestamp"
+          - name: review_answer_timestamp
+            description: "Review answer timestamp"
+            
+      - name: products
+        identifier: public_olist_products_dataset
+        description: "Product catalog with dimensions and categories"
+        columns:
+          - name: product_id
+            description: "Unique product identifier"
+          - name: product_category_name
+            description: "Product category (Portuguese)"
+          - name: product_name_lenght
+            description: "Product name length"
+          - name: product_description_lenght
+            description: "Product description length"
+          - name: product_photos_qty
+            description: "Number of product photos"
+          - name: product_weight_g
+            description: "Product weight in grams"
+          - name: product_length_cm
+            description: "Product length in cm"
+          - name: product_height_cm
+            description: "Product height in cm"
+          - name: product_width_cm
+            description: "Product width in cm"
+            
+      - name: sellers
+        identifier: public_olist_sellers_dataset
+        description: "Seller data with geographic information"
+        columns:
+          - name: seller_id
+            description: "Unique seller identifier"
+          - name: seller_zip_code_prefix
+            description: "Seller zip code (first 5 digits)"
+          - name: seller_city
+            description: "Seller city name"
+          - name: seller_state
+            description: "Seller state code"
+            
+      - name: product_category_name_translation
+        identifier: public_product_category_name_translation
+        description: "Category name translations from Portuguese to English"
+        columns:
+          - name: product_category_name
+            description: "Portuguese category name"
+          - name: product_category_name_english
+            description: "English category translation"

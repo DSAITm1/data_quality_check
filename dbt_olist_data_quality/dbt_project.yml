@@ -2,7 +2,7 @@
 # Name your project! Project names should contain only lowercase characters
 # and underscores. A good package name should reflect your organization's
 # name or the intended use of these models
-name: 'olist_data_quality'
+name: 'dbt_olist_data_quality'
 version: '1.0.0'
 config-version: 2
 
@@ -27,26 +27,32 @@ clean-targets:         # directories to be removed by `dbt clean`
 # Full documentation: https://docs.getdbt.com/docs/configuring-models
 
 models:
-  olist_data_quality:
-    # Staging models - raw data with minimal transformations
+  dbt_olist_data_quality:
+    # Staging models - raw data ingestion with minimal transformations
     staging:
       +materialized: view
       +schema: staging
     
-    # Intermediate models - cleaning and business logic
+    # Intermediate models - business logic and complex transformations
     intermediate:
-      +materialized: view
+      +materialized: ephemeral
       +schema: intermediate
     
-    # Data quality models - monitoring and validation
-    data_quality:
-      +materialized: table
-      +schema: data_quality
-    
-    # Marts models - final clean datasets
+    # Marts - Dimensions: Star schema dimension tables with surrogate keys
     marts:
-      +materialized: table
-      +schema: marts
+      dimensions:
+        +materialized: table
+        +schema: marts_dimensions
+        +cluster_by: ["sk_column"]
+      
+      # Marts - Facts: Star schema fact tables with measures and dimension FKs
+      facts:
+        +materialized: table
+        +schema: marts_facts
+        +partition_by:
+          field: "order_date"
+          data_type: "date"
+        +cluster_by: ["customer_sk", "product_sk"]
 
 # Test configurations
 tests:

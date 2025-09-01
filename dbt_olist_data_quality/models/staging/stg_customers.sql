@@ -1,33 +1,26 @@
 {{ config(materialized='view') }}
 
-with source as (
-    select * from {{ source('olist_raw', 'public_olist_customers_dataset') }}
-),
-
-staged as (
-    select
+with source_data as (
+    select 
         customer_id,
         customer_unique_id,
         customer_zip_code_prefix,
         customer_city,
-        customer_state,
-        _sdc_batched_at,
-        
-        -- Add data quality flags
-        case 
-            when customer_id is null then 1 
-            else 0 
-        end as missing_customer_id_flag,
-        
-        case 
-            when length(cast(customer_zip_code_prefix as string)) < 5 then 1 
-            else 0 
-        end as short_zip_code_flag,
-        
-        -- Add audit fields
-        current_timestamp() as _loaded_at
-        
-    from source
+        customer_state
+    from {{ source('olist_raw', 'customers') }}
+),
+
+cleaned_data as (
+    select 
+        customer_id,
+        customer_unique_id,
+        -- Pad zip code to 5 digits for Brazilian format
+        LPAD(CAST(customer_zip_code_prefix as STRING), 5, '0') as customer_zip_code_prefix,
+        -- Normalize Brazilian city names: trim, normalize accents, standardize case
+        TRIM(UPPER(NORMALIZE(customer_city, NFD))) as customer_city_normalized,
+        customer_city as customer_city_original,
+        UPPER(TRIM(customer_state)) as customer_state
+    from source_data
 )
 
-select * from staged
+select * from cleaned_data
