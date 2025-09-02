@@ -1,0 +1,116 @@
+version: 2
+
+models:
+  - name: int_order_customer_first_last
+    description: "Intermediate: Customer first and last order metrics"
+    columns:
+      - name: customer_id
+        description: "Primary customer identifier"
+        tests:
+          - not_null
+          - unique
+
+  - name: int_order_items_summary
+    description: "Intermediate: Order items summary with price calculations"
+    columns:
+      - name: order_id
+        description: "Primary order identifier"
+        tests:
+          - not_null
+          - unique
+      - name: total_items
+        description: "Total items in order"
+        tests:
+          - not_null
+      - name: total_value
+        description: "Total order value"
+        tests:
+          - not_null
+
+  - name: int_order_payments_agg
+    description: "Intermediate: Aggregated order payments"
+    columns:
+      - name: order_id
+        description: "Primary order identifier"
+        tests:
+          - not_null
+          - unique
+      - name: total_payment_value
+        description: "Total payment amount"
+        tests:
+          - not_null
+
+  - name: int_customers_cleaned
+    description: "Intermediate: Deduplicated and cleaned customer data with Brazilian text normalization"
+    columns:
+      - name: customer_id
+        description: "Master customer identifier after deduplication"
+        tests:
+          - not_null
+          - unique
+      - name: customer_unique_id
+        description: "Original unique customer identifier"
+        tests:
+          - not_null
+      - name: is_master_customer
+        description: "Flag indicating master record in deduplication"
+        tests:
+          - not_null
+
+  - name: int_geolocation_standardized
+    description: "Intermediate: Geolocation data with coordinate corrections and text normalization"
+    columns:
+      - name: geolocation_zip_code_prefix
+        description: "ZIP code prefix"
+        tests:
+          - not_null
+      - name: geolocation_lat_corrected
+        description: "Corrected latitude coordinate"
+        tests:
+          - not_null
+      - name: geolocation_lng_corrected
+        description: "Corrected longitude coordinate"  
+        tests:
+          - not_null
+
+  - name: int_payments_cleaned
+    description: "Intermediate: Payment data with validation and edge case handling"
+    columns:
+      - name: order_id
+        description: "Order identifier"
+        tests:
+          - not_null
+      - name: payment_sequential
+        description: "Payment sequence number"
+        tests:
+          - not_null
+      - name: payment_value_corrected
+        description: "Validated payment value"
+        tests:
+          - not_null
+
+  - name: int_sellers_cleaned
+    description: "Intermediate: Seller data with Brazilian text normalization"
+    columns:
+      - name: seller_id
+        description: "Primary seller identifier"
+        tests:
+          - not_null
+          - unique
+      - name: seller_state_normalized
+        description: "Normalized state name"
+        tests:
+          - not_null
+
+  - name: int_products_cleaned
+    description: "Intermediate: Product data with category normalization and derived analytics"
+    columns:
+      - name: product_id
+        description: "Primary product identifier"
+        tests:
+          - not_null
+          - unique
+      - name: product_category_normalized
+        description: "Normalized category name"
+        tests:
+          - not_null

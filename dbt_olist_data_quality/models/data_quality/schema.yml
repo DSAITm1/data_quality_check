@@ -1,0 +1,39 @@
+version: 2
+
+models:
+  - name: data_quality_results
+    description: "Final data quality results summary"
+    columns:
+      - name: table_name
+        description: "Name of validated table"
+        tests:
+          - not_null
+      - name: total_records
+        description: "Total records processed"
+        tests:
+          - not_null
+      - name: valid_records
+        description: "Valid records count"
+        tests:
+          - not_null
+      - name: data_quality_score
+        description: "Quality score percentage"
+        tests:
+          - not_null
+
+  - name: data_quality_by_table
+    description: "Data quality metrics by table"
+    columns:
+      - name: table_name
+        description: "Name of the table"
+        tests:
+          - not_null
+          - unique
+      - name: row_count
+        description: "Total rows"
+        tests:
+          - not_null
+      - name: quality_score
+        description: "Quality score"
+        tests:
+          - not_null

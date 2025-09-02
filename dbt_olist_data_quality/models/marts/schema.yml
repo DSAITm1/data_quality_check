@@ -1,0 +1,49 @@
+version: 2
+
+models:
+  - name: dim_customers
+    description: "Customer dimension table"
+    columns:
+      - name: customer_id
+        description: "Primary customer identifier"
+        tests:
+          - not_null
+          - unique
+      - name: customer_zip_code_prefix
+        description: "Customer zip code"
+        tests:
+          - not_null
+
+  - name: dim_products
+    description: "Product dimension table"
+    columns:
+      - name: product_id
+        description: "Primary product identifier"
+        tests:
+          - not_null
+          - unique
+
+  - name: dim_sellers
+    description: "Seller dimension table"
+    columns:
+      - name: seller_id
+        description: "Primary seller identifier"
+        tests:
+          - not_null
+          - unique
+
+  - name: fact_orders
+    description: "Order fact table"
+    columns:
+      - name: order_id
+        description: "Primary order identifier"
+        tests:
+          - not_null
+          - unique
+      - name: customer_id
+        description: "Customer foreign key"
+        tests:
+          - not_null
+          - relationships:
+              to: ref('dim_customers')
+              field: customer_id

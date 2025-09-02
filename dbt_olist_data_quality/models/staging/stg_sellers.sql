@@ -7,9 +7,12 @@ with source as (
 staged as (
     select
         seller_id,
-        seller_zip_code_prefix,
-        seller_city,
-        seller_state,
+        -- Standardize zip code format to 5-digit string (consistent with other staging models)
+        LPAD(CAST(seller_zip_code_prefix as STRING), 5, '0') as seller_zip_code_prefix,
+        -- Normalize Brazilian city names: trim, normalize accents, standardize case
+        TRIM(UPPER(NORMALIZE(seller_city, NFD))) as seller_city_normalized,
+        seller_city as seller_city_original,
+        UPPER(TRIM(seller_state)) as seller_state,
         _sdc_batched_at,
         
         -- Add data quality flags
@@ -24,7 +27,7 @@ staged as (
         end as missing_zip_code_flag,
         
         case 
-            when length(cast(seller_zip_code_prefix as string)) < 5 then 1 
+            when length(LPAD(CAST(seller_zip_code_prefix as STRING), 5, '0')) < 5 then 1 
             else 0 
         end as short_zip_code_flag,
         

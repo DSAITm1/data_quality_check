@@ -1,0 +1,545 @@
+version: 2
+
+models:
+  # ===========================================
+  # 5.1 stg_customers Test Criteria
+  # ===========================================
+  - name: stg_customers
+    description: "Staging table for customer data - source for dim_customer"
+    columns:
+      - name: customer_id
+        description: "Primary key - unique customer identifier"
+        tests:
+          - unique:
+              severity: error
+          - not_null:
+              severity: error
+              
+      - name: customer_unique_id
+        description: "Business unique ID - should be unique, allows nulls"
+        tests:
+          - unique:
+              severity: warn
+              
+      - name: customer_zip_code_prefix
+        description: "Brazilian zip code (5 digits)"
+        tests:
+          - not_null:
+              severity: error
+          - dbt_expectations.expect_column_values_to_match_regex:
+              regex: "^[0-9]{5}$"
+              severity: error
+              
+      - name: customer_city_normalized
+        description: "Normalized city name for Brazilian text issues"
+        tests:
+          - not_null:
+              severity: error
+              
+      - name: customer_state
+        description: "Brazilian state code (2 letters)"
+        tests:
+          - not_null:
+              severity: error
+          - dbt_expectations.expect_column_values_to_be_in_set:
+              value_set: ['AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN', 'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO']
+              severity: error
+
+  # ===========================================
+  # 5.2 stg_geolocation Test Criteria  
+  # ===========================================
+  - name: stg_geolocation
+    description: "Staging table for geolocation data - source for dim_geolocation"
+    columns:
+      - name: geolocation_zip_code_prefix
+        description: "Brazilian zip code (5 digits) - natural key"
+        tests:
+          - not_null:
+              severity: error
+          - dbt_expectations.expect_column_values_to_match_regex:
+              regex: "^[0-9]{5}$"
+              severity: error
+              
+      - name: composite_geo_key
+        description: "Composite uniqueness: zip_code + lat + lng"
+        tests:
+          - unique:
+              severity: error
+              
+      - name: geolocation_lat
+        description: "Latitude coordinate"
+        tests:
+          - not_null:
+              severity: error
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: -35.0
+              max_value: 5.0
+              severity: error
+              
+      - name: geolocation_lng
+        description: "Longitude coordinate"
+        tests:
+          - not_null:
+              severity: error
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: -75.0
+              max_value: -30.0
+              severity: error
+              
+      - name: geolocation_city_normalized
+        description: "Normalized city name for Brazilian text issues"
+        tests:
+          - not_null:
+              severity: error
+              
+      - name: geolocation_state
+        description: "Brazilian state code"
+        tests:
+          - not_null:
+              severity: error
+          - dbt_expectations.expect_column_values_to_be_in_set:
+              value_set: ['AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN', 'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO']
+              severity: error
+
+  # ===========================================
+  # 5.3 stg_orders Test Criteria
+  # ===========================================
+  - name: stg_orders
+    description: "Staging table for order data - source for dim_orders and date dimension"
+    columns:
+      - name: order_id
+        description: "Primary key - unique order identifier"
+        tests:
+          - unique:
+              severity: error
+          - not_null:
+              severity: error
+              
+      - name: customer_id
+        description: "Foreign key to customers"
+        tests:
+          - not_null:
+              severity: error
+          - relationships:
+              to: ref('stg_customers')
+              field: customer_id
+              severity: error
+              
+      - name: order_status
+        description: "Order status values"
+        tests:
+          - not_null:
+              severity: error
+          - dbt_expectations.expect_column_values_to_be_in_set:
+              value_set: ['DELIVERED', 'SHIPPED', 'PROCESSING', 'UNAVAILABLE', 'CANCELED', 'CREATED', 'APPROVED', 'INVOICED']
+              severity: error
+              
+      - name: order_purchase_timestamp
+        description: "Order purchase timestamp"
+        tests:
+          - not_null:
+              severity: error
+              
+      - name: valid_approval_sequence
+        description: "Temporal validation: approval >= purchase"
+        tests:
+          - dbt_expectations.expect_column_values_to_be_in_set:
+              value_set: [1]
+              severity: error
+              
+      - name: valid_carrier_sequence
+        description: "Temporal validation: carrier >= approval"
+        tests:
+          - dbt_expectations.expect_column_values_to_be_in_set:
+              value_set: [1]
+              severity: error
+              
+      - name: valid_delivery_sequence
+        description: "Temporal validation: delivery >= carrier"
+        tests:
+          - dbt_expectations.expect_column_values_to_be_in_set:
+              value_set: [1]
+              severity: error
+
+  # ===========================================
+  # 5.4 stg_order_items Test Criteria
+  # ===========================================
+  - name: stg_order_items
+    description: "Staging table for order items - source for fact_order_items"
+    columns:
+      - name: composite_key
+        description: "Composite primary key: order_id + order_item_id + product_id + seller_id"
+        tests:
+          - unique:
+              severity: error
+              
+      - name: order_id
+        description: "Foreign key to orders"
+        tests:
+          - not_null:
+              severity: error
+          - relationships:
+              to: ref('stg_orders')
+              field: order_id
+              severity: error
+              
+      - name: order_item_id
+        description: "Item sequence within order"
+        tests:
+          - not_null:
+              severity: error
+              
+      - name: product_id
+        description: "Foreign key to products"
+        tests:
+          - not_null:
+              severity: error
+          - relationships:
+              to: ref('stg_products')
+              field: product_id
+              severity: error
+              
+      - name: seller_id
+        description: "Foreign key to sellers"
+        tests:
+          - not_null:
+              severity: error
+          - relationships:
+              to: ref('stg_sellers')
+              field: seller_id
+              severity: error
+              
+      - name: price
+        description: "Item price (must be > 0)"
+        tests:
+          - not_null:
+              severity: error
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0.01
+              max_value: 10000
+              severity: error
+              
+      - name: freight_value
+        description: "Freight cost (must be >= 0)"
+        tests:
+          - not_null:
+              severity: error
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0
+              max_value: 1000
+              severity: error
+              
+      - name: valid_price
+        description: "Price validation flag"
+        tests:
+          - dbt_expectations.expect_column_values_to_be_in_set:
+              value_set: [1]
+              severity: error
+              
+      - name: valid_freight
+        description: "Freight validation flag"
+        tests:
+          - dbt_expectations.expect_column_values_to_be_in_set:
+              value_set: [1]
+              severity: error
+
+  # ===========================================
+  # 5.5 stg_order_payments Test Criteria
+  # ===========================================
+  - name: stg_order_payments
+    description: "Staging table for payment data - source for dim_payment"
+    columns:
+      - name: composite_payment_key
+        description: "Composite primary key: order_id + payment_sequential"
+        tests:
+          - unique:
+              severity: error
+              
+      - name: order_id
+        description: "Foreign key to orders"
+        tests:
+          - not_null:
+              severity: error
+          - relationships:
+              to: ref('stg_orders')
+              field: order_id
+              severity: error
+              
+      - name: payment_sequential
+        description: "Payment sequence within order"
+        tests:
+          - not_null:
+              severity: error
+              
+      - name: payment_value
+        description: "Payment amount (must be > 0)"
+        tests:
+          - not_null:
+              severity: error
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0.01
+              max_value: 10000
+              severity: error
+              
+      - name: payment_installments
+        description: "Number of installments (must be >= 1)"
+        tests:
+          - not_null:
+              severity: error
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 1
+              max_value: 24
+              severity: error
+              
+      - name: payment_type
+        description: "Payment method"
+        tests:
+          - not_null:
+              severity: error
+          - dbt_expectations.expect_column_values_to_be_in_set:
+              value_set: ['CREDIT_CARD', 'BOLETO', 'VOUCHER', 'DEBIT_CARD']
+              severity: error
+              
+      - name: valid_payment_value
+        description: "Payment value validation flag"
+        tests:
+          - dbt_expectations.expect_column_values_to_be_in_set:
+              value_set: [1]
+              severity: error
+              
+      - name: valid_installments
+        description: "Installments validation flag"
+        tests:
+          - dbt_expectations.expect_column_values_to_be_in_set:
+              value_set: [1]
+              severity: error
+
+  # ===========================================
+  # 5.6 stg_order_reviews Test Criteria
+  # ===========================================
+  - name: stg_order_reviews
+    description: "Staging table for review data - source for dim_order_reviews"
+    columns:
+      - name: review_id
+        description: "Review identifier (allows nulls)"
+        tests:
+          - unique:
+              severity: warn
+              
+      - name: order_id
+        description: "Foreign key to orders"
+        tests:
+          - not_null:
+              severity: error
+          - relationships:
+              to: ref('stg_orders')
+              field: order_id
+              severity: error
+              
+      - name: review_score
+        description: "Review score (1-5 range)"
+        tests:
+          - not_null:
+              severity: error
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 1
+              max_value: 5
+              severity: error
+              
+      - name: valid_review_score
+        description: "Review score validation flag"
+        tests:
+          - dbt_expectations.expect_column_values_to_be_in_set:
+              value_set: [1]
+              severity: error
+              
+      - name: valid_answer_sequence
+        description: "Review answer temporal validation"
+        tests:
+          - dbt_expectations.expect_column_values_to_be_in_set:
+              value_set: [1]
+              severity: error
+              
+      - name: title_length
+        description: "Review title length validation"
+        tests:
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0
+              max_value: 1000
+              severity: warn
+              
+      - name: message_length
+        description: "Review message length validation"
+        tests:
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0
+              max_value: 5000
+              severity: warn
+
+  # ===========================================
+  # 5.7 stg_products Test Criteria
+  # ===========================================
+  - name: stg_products
+    description: "Staging table for product data - source for dim_product"
+    columns:
+      - name: product_id
+        description: "Primary key - unique product identifier"
+        tests:
+          - unique:
+              severity: error
+          - not_null:
+              severity: error
+              
+      - name: product_category_name
+        description: "Product category (Portuguese)"
+        tests:
+          - not_null:
+              severity: error
+          - relationships:
+              to: ref('stg_category_translations')
+              field: product_category_name
+              severity: error
+              
+      - name: product_photos_qty
+        description: "Number of product photos (>= 0)"
+        tests:
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0
+              max_value: 50
+              severity: warn
+              
+      - name: valid_weight
+        description: "Product weight validation flag"
+        tests:
+          - dbt_expectations.expect_column_values_to_be_in_set:
+              value_set: [1]
+              severity: error
+              
+      - name: valid_length
+        description: "Product length validation flag"
+        tests:
+          - dbt_expectations.expect_column_values_to_be_in_set:
+              value_set: [1]
+              severity: error
+              
+      - name: valid_height
+        description: "Product height validation flag"
+        tests:
+          - dbt_expectations.expect_column_values_to_be_in_set:
+              value_set: [1]
+              severity: error
+              
+      - name: valid_width
+        description: "Product width validation flag"
+        tests:
+          - dbt_expectations.expect_column_values_to_be_in_set:
+              value_set: [1]
+              severity: error
+              
+      - name: valid_photos_qty
+        description: "Product photos quantity validation flag"
+        tests:
+          - dbt_expectations.expect_column_values_to_be_in_set:
+              value_set: [1]
+              severity: error
+
+  # ===========================================
+  # 5.8 stg_sellers Test Criteria
+  # ===========================================
+  - name: stg_sellers
+    description: "Staging table for seller data - source for dim_seller"
+    columns:
+      - name: seller_id
+        description: "Primary key - unique seller identifier"
+        tests:
+          - unique:
+              severity: error
+          - not_null:
+              severity: error
+              
+      - name: seller_zip_code_prefix
+        description: "Seller zip code (5 digits)"
+        tests:
+          - not_null:
+              severity: error
+          - dbt_expectations.expect_column_values_to_match_regex:
+              regex: "^[0-9]{5}$"
+              severity: error
+              
+      - name: seller_city_normalized
+        description: "Normalized seller city name"
+        tests:
+          - not_null:
+              severity: error
+              
+      - name: seller_state
+        description: "Brazilian state code"
+        tests:
+          - not_null:
+              severity: error
+          - dbt_expectations.expect_column_values_to_be_in_set:
+              value_set: ['AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN', 'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO']
+              severity: error
+
+  # ===========================================
+  # 5.9 stg_category_translations Test Criteria
+  # ===========================================
+  - name: stg_category_translations
+    description: "Staging table for category translations - reference for product categorization"
+    columns:
+      - name: product_category_name
+        description: "Primary key - Portuguese category name"
+        tests:
+          - unique:
+              severity: error
+          - not_null:
+              severity: error
+              
+      - name: product_category_name_english
+        description: "English category translation"
+        tests:
+          - not_null:
+              severity: error
+              
+      - name: portuguese_name_length
+        description: "Portuguese category name length validation"
+        tests:
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 1
+              max_value: 100
+              severity: error
+              
+      - name: english_name_length
+        description: "English category name length validation"
+        tests:
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 1
+              max_value: 100
+              severity: error
+
+# ===========================================
+# 5.12 Data Quality Dimensions Assessment
+# ===========================================
+# Additional table-level tests for completeness, validity, accuracy, consistency, uniqueness
+
+  # Table-level completeness tests
+  - name: stg_customers
+    tests:
+      - dbt_expectations.expect_table_row_count_to_be_between:
+          min_value: 1000
+          max_value: 200000
+          severity: error
+
+  - name: stg_orders
+    tests:
+      - dbt_expectations.expect_table_row_count_to_be_between:
+          min_value: 1000
+          max_value: 200000
+          severity: error
+
+  - name: stg_order_items
+    tests:
+      - dbt_expectations.expect_table_row_count_to_be_between:
+          min_value: 1000
+          max_value: 200000
+          severity: error

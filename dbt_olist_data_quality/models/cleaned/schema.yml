@@ -1,0 +1,100 @@
+version: 2
+
+models:
+  - name: cleaned_customers
+    description: "Cleaned customers with validated data"
+    columns:
+      - name: customer_id
+        description: "Primary customer identifier"
+        tests:
+          - not_null
+          - unique
+      - name: customer_zip_code_prefix
+        description: "Validated zip code prefix"
+        tests:
+          - not_null
+
+  - name: cleaned_orders
+    description: "Cleaned orders with validated timestamps"
+    columns:
+      - name: order_id
+        description: "Primary order identifier"
+        tests:
+          - not_null
+          - unique
+      - name: customer_id
+        description: "Customer foreign key"
+        tests:
+          - not_null
+
+  - name: cleaned_products
+    description: "Cleaned products with validated dimensions"
+    columns:
+      - name: product_id
+        description: "Primary product identifier"
+        tests:
+          - not_null
+          - unique
+
+  - name: cleaned_sellers
+    description: "Cleaned sellers with validated location"
+    columns:
+      - name: seller_id
+        description: "Primary seller identifier"
+        tests:
+          - not_null
+          - unique
+
+  - name: cleaned_order_items
+    description: "Cleaned order items with validated prices"
+    columns:
+      - name: order_id
+        description: "Order foreign key"
+        tests:
+          - not_null
+      - name: product_id
+        description: "Product foreign key"
+        tests:
+          - not_null
+      - name: seller_id
+        description: "Seller foreign key"
+        tests:
+          - not_null
+
+  - name: cleaned_order_payments
+    description: "Cleaned order payments"
+    columns:
+      - name: order_id
+        description: "Order foreign key"
+        tests:
+          - not_null
+
+  - name: cleaned_order_reviews
+    description: "Cleaned order reviews"
+    columns:
+      - name: review_id
+        description: "Primary review identifier"
+        tests:
+          - not_null
+          - unique
+      - name: order_id
+        description: "Order foreign key"
+        tests:
+          - not_null
+
+  - name: cleaned_geolocation
+    description: "Cleaned geolocation data"
+    columns:
+      - name: geolocation_zip_code_prefix
+        description: "Zip code prefix"
+        tests:
+          - not_null
+
+  - name: cleaned_category_translations
+    description: "Cleaned category translations"
+    columns:
+      - name: product_category_name
+        description: "Portuguese category name"
+        tests:
+          - not_null
+          - unique

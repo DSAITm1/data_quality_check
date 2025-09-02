@@ -1,0 +1,18 @@
+version: 2
+
+models:
+  - name: validation_summary
+    description: "Validation summary across all checks"
+    columns:
+      - name: validation_type
+        description: "Type of validation performed"
+        tests:
+          - not_null
+      - name: table_name
+        description: "Name of validated table"
+        tests:
+          - not_null
+      - name: passed
+        description: "Whether validation passed"
+        tests:
+          - not_null

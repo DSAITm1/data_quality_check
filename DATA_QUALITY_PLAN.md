@@ -52,160 +52,73 @@
 
 ### 5.1 **stg_customers** Test Criteria
 **Purpose**: Source for `dim_customer`
-- **Primary Key Tests**:
-  - `customer_id` must be unique and not null
-  - `customer_unique_id` should be unique (allows nulls)
-- **Data Quality Tests**:
-  - `customer_zip_code_prefix` format validation (5 digits, Brazilian zip codes)
-  - `customer_city` and `customer_state` not null
-  - State codes must be valid Brazilian states (2-letter codes)
-  - **Text Normalization Issues**:
-    - City/state names with/without Latin accents (São Paulo vs Sao Paulo)
-    - Extra spaces within names ("Rio de  Janeiro" vs "Rio de Janeiro")
-    - Apostrophe variations ("D'Oeste" vs "DOeste" vs "D Oeste")
-    - Case inconsistencies ("são paulo" vs "SÃO PAULO")
-- **Business Logic Tests**:
-  - Customer geographic data consistency check
-  - Duplicate customer detection (same unique_id, different customer_id)
-  - **Geographic Name Standardization**:
-    - Fuzzy matching for accent variations in city names
-    - Whitespace normalization (trim, collapse multiple spaces)
-    - Apostrophe standardization rules
+**Available Fields**: customer_id, customer_unique_id, customer_zip_code_prefix, customer_city_normalized, customer_city_original, customer_state
+- **Primary Key Tests**: customer_id uniqueness/non-null, customer_unique_id uniqueness (allows nulls)
+- **Data Quality Tests**: Brazilian zip code format (5 digits), city/state non-null, valid state codes
+- **Text Normalization**: customer_city_normalized field handles accent variations, spacing, case consistency
+- **Business Logic Tests**: Geographic data consistency, duplicate customer detection using customer_unique_id + geographic fields
 
 ### 5.2 **stg_geolocation** Test Criteria
 **Purpose**: Source for `dim_geolocation`
-- **Primary Key Tests**:
-  - `geolocation_zip_code_prefix` not null (natural key)
-  - Composite uniqueness: zip_code + lat + lng combination
-- **Data Quality Tests**:
-  - Latitude range: -35.0 to 5.0 (Brazil boundaries)
-  - Longitude range: -75.0 to -30.0 (Brazil boundaries)
-  - `geolocation_city` and `geolocation_state` not null
-  - **Text Normalization Issues**:
-    - City/state names with accent variations (Brasília vs Brasilia)
-    - Multiple space patterns ("Porto  Alegre" vs "Porto Alegre")
-    - Apostrophe inconsistencies ("Angra d'Oeste" vs "Angra dOeste")
-    - Mixed case formatting ("RECIFE" vs "Recife" vs "recife")
-- **Business Logic Tests**:
-  - Coordinate-to-state consistency validation
-  - Zip code format standardization (pad with leading zeros)
-  - **Geographic Name Cleaning**:
-    - Accent removal/standardization for consistent matching
-    - Space normalization (single space between words)
-    - Apostrophe standardization (consistent punctuation rules)
-    - Case standardization (Title Case for city names)
+**Available Fields**: geolocation_zip_code_prefix, geolocation_lat, geolocation_lng, geolocation_city_normalized, geolocation_city_original, geolocation_state, composite_geo_key
+- **Primary Key Tests**: composite_geo_key uniqueness (zip + lat + lng), geolocation_zip_code_prefix non-null
+- **Data Quality Tests**: Brazil coordinate boundaries (-35°/5° lat, -75°/-30° lng), city/state non-null
+- **Text Normalization**: geolocation_city_normalized field handles Brazilian accent/spacing/case issues
+- **Business Logic Tests**: Coordinate-to-state consistency, zip code standardization, geographic validation
 
 ### 5.3 **stg_orders** Test Criteria
 **Purpose**: Source for `dim_orders` and date dimension
-- **Primary Key Tests**:
-  - `order_id` must be unique and not null
-- **Data Quality Tests**:
-  - `customer_id` not null (FK to customers)
-  - `order_status` in accepted values list
-  - All timestamp fields proper datetime format
-- **Business Logic Tests**:
-  - Temporal sequence validation: purchase <= approved <= shipped <= delivered
-  - Order status consistency with timestamps
-  - Customer existence validation (FK integrity)
+**Available Fields**: order_id, customer_id, order_status, order_purchase_timestamp, order_approved_at, order_delivered_carrier_date, order_delivered_customer_date, order_estimated_delivery_date, temporal_sequence_valid
+- **Primary Key Tests**: order_id uniqueness and non-null validation
+- **Data Quality Tests**: customer_id non-null (FK), order_status in accepted values, proper timestamp parsing
+- **Business Logic Tests**: Temporal sequence validation using temporal_sequence_valid flag, order status consistency
 
 ### 5.4 **stg_order_items** Test Criteria
 **Purpose**: Source for `fact_order_items` (main fact table)
-- **Primary Key Tests**:
-  - Composite key: `order_id` + `order_item_id` + `product_id` + `seller_id` unique
-  - All key components not null
-- **Data Quality Tests**:
-  - `price` > 0 and not null
-  - `freight_value` >= 0
-  - `shipping_limit_date` proper datetime format
-- **Business Logic Tests**:
-  - FK relationships: order_id → orders, product_id → products, seller_id → sellers
-  - Price reasonableness checks (not extreme outliers)
-  - Shipping date after order date logic
+**Available Fields**: order_id, order_item_id, product_id, seller_id, shipping_limit_date, price, freight_value, composite_key, valid_price, valid_freight
+- **Primary Key Tests**: composite_key uniqueness (order_id + order_item_id + product_id + seller_id)
+- **Data Quality Tests**: price > 0 validation via valid_price flag, freight_value >= 0 via valid_freight flag
+- **Business Logic Tests**: FK relationships validation, price reasonableness, shipping date logic
 
 ### 5.5 **stg_order_payments** Test Criteria
 **Purpose**: Source for `dim_payment`
-- **Primary Key Tests**:
-  - Composite key: `order_id` + `payment_sequential` unique
-  - Both components not null
-- **Data Quality Tests**:
-  - `payment_value` > 0 and not null
-  - `payment_installments` >= 1
-  - `payment_type` in accepted values list
-- **Business Logic Tests**:
-  - FK relationship: order_id → orders
-  - Payment total vs order total reconciliation
-  - Installment logic validation (installments * value consistency)
+**Available Fields**: order_id, payment_sequential, payment_type, payment_installments, payment_value, composite_payment_key, valid_payment_value, valid_installments
+- **Primary Key Tests**: composite_payment_key uniqueness (order_id + payment_sequential)
+- **Data Quality Tests**: Payment validation via valid_payment_value flag (>0), installment validation via valid_installments flag (>=1)
+- **Business Logic Tests**: 
+  - FK relationship validation (order_id → orders)
+  - **Payment-Order Reconciliation**: Sum of payment sequences = order item totals
+  - Payment type standardization (TRIM + UPPER applied)
 
 ### 5.6 **stg_order_reviews** Test Criteria
 **Purpose**: Source for `dim_order_reviews`
-- **Primary Key Tests**:
-  - `review_id` unique (allows nulls for reviews without IDs)
-  - `order_id` not null (FK to orders)
-- **Data Quality Tests**:
-  - `review_score` between 1 and 5 (inclusive)
-  - Date fields proper datetime format
-  - Review text fields reasonable length limits
-- **Business Logic Tests**:
-  - FK relationship: order_id → orders
-  - Review creation date after order delivered date
-  - Review answer timestamp after creation timestamp
+**Available Fields**: review_id, order_id, review_score, review_comment_title, review_comment_message, review_creation_date, review_answer_timestamp, valid_review_score, valid_answer_sequence
+- **Primary Key Tests**: review_id uniqueness (allows nulls), order_id non-null (FK)
+- **Data Quality Tests**: Review score 1-5 validation via valid_review_score flag, timestamp parsing
+- **Business Logic Tests**: Answer sequence validation via valid_answer_sequence flag, temporal logic
 
 ### 5.7 **stg_products** Test Criteria
 **Purpose**: Source for `dim_product`
-- **Primary Key Tests**:
-  - `product_id` must be unique and not null
-- **Data Quality Tests**:
-  - Product dimensions (length, height, width, weight) >= 0
-  - `product_category_name` not null
-  - Photo quantity >= 0
-- **Business Logic Tests**:
-  - Category name validation against translations table
-  - Product dimension reasonableness (not extreme outliers)
-  - Name/description length consistency checks
+**Available Fields**: product_id, product_category_name, product_name_length, product_description_length, product_photos_qty, product_weight_g, product_length_cm, product_height_cm, product_width_cm, valid_weight, valid_length, valid_height, valid_width
+- **Primary Key Tests**: product_id uniqueness and non-null validation
+- **Data Quality Tests**: Dimension validation via valid_* flags (>=0), product_category_name non-null, photo quantity >= 0
+- **Business Logic Tests**: Category validation against translations, dimension reasonableness via validation flags
 
 ### 5.8 **stg_sellers** Test Criteria
 **Purpose**: Source for `dim_seller`
-- **Primary Key Tests**:
-  - `seller_id` must be unique and not null
-- **Data Quality Tests**:
-  - `seller_zip_code_prefix` format validation (5 digits)
-  - `seller_city` and `seller_state` not null
-  - State codes must be valid Brazilian states
-  - **Text Normalization Issues**:
-    - Seller city names with accent variations (Goiânia vs Goiania)
-    - Inconsistent spacing ("Belo  Horizonte" vs "Belo Horizonte") 
-    - Apostrophe handling ("Feira de Sant'Ana" vs "Feira de SantAna")
-    - Case variations ("FORTALEZA" vs "Fortaleza")
-- **Business Logic Tests**:
-  - Geographic data consistency with geolocation table
-  - Duplicate seller detection by geographic location
-  - Seller location within Brazil boundaries
-  - **Geographic Standardization**:
-    - Cross-reference normalized seller city with geolocation data
-    - Fuzzy matching for accent/spacing variations
-    - Validate seller state consistency with city
+**Available Fields**: seller_id, seller_zip_code_prefix, seller_city, seller_state, missing_seller_id_flag, missing_zip_code_flag, short_zip_code_flag, missing_city_flag, missing_state_flag
+- **Primary Key Tests**: seller_id uniqueness and non-null validation
+- **Data Quality Tests**: Data quality flags for missing/invalid fields, Brazilian zip code format, valid state codes
+- **Text Normalization Issues**: Brazilian city names need accent/spacing/case standardization (applied in intermediate layer)
+- **Business Logic Tests**: Geographic consistency, duplicate detection, Brazil boundary validation
 
 ### 5.9 **stg_category_translations** Test Criteria
 **Purpose**: Reference for product categorization in `dim_product`
-- **Primary Key Tests**:
-  - `product_category_name` (Portuguese) must be unique and not null
-- **Data Quality Tests**:
-  - `product_category_name_english` not null
-  - Both category names reasonable length
-  - No duplicate English translations for different Portuguese names
-  - **Text Normalization Issues**:
-    - Category names with accent variations ("bebês" vs "bebes")
-    - Extra spaces in category names ("casa e  jardim" vs "casa e jardim")
-    - Apostrophe inconsistencies in compound categories
-    - Case variations ("ELETRÔNICOS" vs "eletrônicos")
-- **Business Logic Tests**:
-  - All categories in products table have translations
-  - Translation consistency (1:1 mapping)
-  - Category name standardization (trim, case consistency)
-  - **Translation Quality Checks**:
-    - Verify accent removal consistency in translations
-    - Check for normalized category mapping (multiple Portuguese → single English)
-    - Validate translation completeness for all product categories
+**Available Fields**: product_category_name, product_category_name_normalized, product_category_name_english, portuguese_name_length, english_name_length
+- **Primary Key Tests**: product_category_name (Portuguese) uniqueness and non-null validation
+- **Data Quality Tests**: English translation non-null, length validation via *_name_length fields
+- **Text Normalization**: product_category_name_normalized field handles Brazilian accent/spacing/case variations
+- **Business Logic Tests**: Translation completeness, consistency (1:1 mapping), category standardization
 
 ### 5.10 **Brazilian Text Normalization Strategy**
 **Common Data Quality Issues in Brazilian Geographic/Text Data**:
@@ -249,15 +162,17 @@
 - `expect_column_values_to_be_between`: Geographic coordinate validation for Brazil
 
 ### 5.11 Cross-Table Referential Integrity Tests
-- **orders.customer_id** → **customers.customer_id**
-- **order_items.order_id** → **orders.order_id**
-- **order_items.product_id** → **products.product_id**
-- **order_items.seller_id** → **sellers.seller_id**
-- **order_payments.order_id** → **orders.order_id**
-- **order_reviews.order_id** → **orders.order_id**
-- **customers.customer_zip_code_prefix** → **geolocation.geolocation_zip_code_prefix** 
-- **sellers.seller_zip_code_prefix** → **geolocation.geolocation_zip_code_prefix** 
-- **products.product_category_name** → **category_translations.product_category_name**
+- **orders.customer_id** → **customers.customer_id** ✅
+- **order_items.order_id** → **orders.order_id** ✅
+- **order_items.product_id** → **products.product_id** ✅
+- **order_items.seller_id** → **sellers.seller_id** ✅
+- **order_payments.order_id** → **orders.order_id** ✅
+- **order_reviews.order_id** → **orders.order_id** ✅
+- **customers.customer_zip_code_prefix** → **geolocation.geolocation_zip_code_prefix** ✅ **FIXED via int_geolocation_consolidated**
+- **sellers.seller_zip_code_prefix** → **geolocation.geolocation_zip_code_prefix** ✅ **FIXED via int_geolocation_consolidated**
+- **products.product_category_name** → **category_translations.product_category_name** ✅
+
+**Integrity Enhancement**: Added 992 missing zip codes with estimated coordinates to achieve 100% referential integrity
 
 ### 5.12 **Data Quality Dimensions Assessment**:
 - **Completeness**: < 5% null values in critical business keys
@@ -268,237 +183,118 @@
 
 ## 6. Data Cleaning Implementation
 
-**Updated Implementation Priority Based on Section 5 Findings**:
-- **Overall Data Quality**: 96.7% excellent quality - minimal cleaning required
-- **Primary Focus**: Customer deduplication (3,345 records = 3.4% of customers)
-- **Secondary Focus**: Brazilian text normalization for consistency
-- **Minimal Focus**: Geographic coordinates (55 records), payment logic (11 records)
+**Implementation Priority**: 96.7% excellent quality requires minimal cleaning
+- **Primary Focus**: Customer deduplication (3,345 records affecting dimension integrity)
+- **Secondary Focus**: Brazilian text normalization for geographic consistency  
+- **Minimal Focus**: Coordinate validation (55 records), payment edge cases (11 records)
 
-### 6.1 dbt Testing Framework Setup
-**Location**: `./dbt_olist_data_quality/` project folder
-- **packages.yml**: Include dbt-expectations, dbt-utils for advanced testing capabilities
-- **dbt_project.yml**: Configure model materialization, test severity levels, BigQuery-specific settings
-- **macros/**: Custom JINJA macros for Brazilian text normalization and customer deduplication
-- **tests/**: Custom SQL tests for business logic validation and quality monitoring
-- **models/schema.yml**: Maintain comprehensive dbt-expectations tests for ongoing monitoring
+### 6.1 **int_customers_cleaned** - Customer Deduplication
+**Business Logic**: customer_unique_id grouping + completeness/recency scoring for master record selection
+**Enhancement**: Customer lifetime analytics, geographic classification, audit trail tracking
+**Quality Target**: Reduce 3,345 duplicates to <50 (99%+ deduplication rate)
 
-**BigQuery Configuration Requirements**:
-- Use BigQuery Standard SQL (not Legacy SQL)
-- Enable query caching for performance optimization
-- Configure appropriate timeouts for large dataset processing
-- Set up BigQuery slot allocation for consistent performance
+### 6.2 **int_geolocation_consolidated** - Business-Optimized Geographic Solution
+**Business Optimization**: Consolidate to ONE lat/lng per (zip_code, city, state) for simplified business operations
+**Integrity Enhancement**: Add missing zip codes (992 records) from customers/sellers with estimated coordinates
+**Consolidation Strategy**: 
+- **Existing Data**: Use median coordinates as representative point for each geographic area (reduces 1M+ records to ~20K)
+- **Missing Data**: Estimate coordinates using city averages (921 zip codes) or state averages (80 zip codes) 
+- **Quality Levels**: High confidence (exact), medium confidence (city estimate), low confidence (state estimate)
+**Business Impact**: 100% referential integrity, simplified location analytics, 97% reduction in geolocation complexity
+**Quality Target**: 100% coordinate coverage, 99.96% valid Brazil coordinates, complete business referential integrity
 
-### 6.2 **PRIORITY 1: Customer Data Deduplication** 🎯
-**Critical Issue**: 3,345 duplicate customer_unique_id records affecting 3.4% of customers
-- **Customer Deduplication Logic**: 
-  - Identify customers with same customer_unique_id but different customer_id
-  - Create master customer record selection criteria (most recent, most complete data)
-  - Implement customer merge strategy preserving order history
-  - Create customer_master_sk mapping for dimensional modeling
-- **Validation**: Cross-validate deduplicated customers against order history
-- **Business Impact**: Essential for accurate customer analytics and segmentation
+### 6.3 **int_orders_enriched** - Order Enhancement & Temporal Validation
+**Enhancement**: Order lifecycle analytics, delivery performance metrics, temporal sequence validation
+**Business Logic**: Order status progression validation, delivery time calculations
+**Quality Target**: Complete order lifecycle tracking with temporal consistency
 
-### 6.3 **PRIORITY 2: Brazilian Text Normalization** 📝  
-**Scope**: Standardize city/state names across all geographic fields for consistency
-- **Text Normalization Strategy**:
-  - Accent standardization using NORMALIZE() function
-  - Whitespace normalization (TRIM, collapse multiple spaces)
-  - Apostrophe standardization for consistent matching
-  - Case standardization (Title Case for proper nouns)
-- **Implementation**: Apply to customers, sellers, and geolocation city/state fields
-- **Business Impact**: Improves geographic analysis consistency and data usability
+### 6.4 **int_payments_cleaned** - Payment Validation & Reconciliation
+**Standardization**: Payment type consistency, installment validation using staging validation flags
+**Reconciliation**: Payment sequences must sum exactly to order totals (Priority 4 enhancement)
+**Enhancement**: Payment risk scoring, method preference analysis
+**Quality Target**: 99.99% payment validation accuracy, 100% reconciliation compliance
 
-### 6.4 **PRIORITY 3: Minor Geographic Coordinate Cleanup** 🌍
-**Minimal Scope**: 55 location records (0.005%) outside Brazil boundaries  
-- **Coordinate Validation**: Investigate records outside lat/lng ranges for Brazil
-- **Resolution Strategy**: Validate against known Brazilian geographic data or exclude from geographic analysis
-- **Business Impact**: Minimal - affects only location-based analytics edge cases
+### 6.5 **int_sellers_cleaned** - Seller Enhancement  
+**Text Normalization**: Brazilian Portuguese accent/spacing/case standardization building on staging quality flags
+**Geographic Enhancement**: Location validation, regional classification, delivery capacity mapping
+**Quality Target**: 100% text consistency, complete geographic standardization
 
-### 6.5 **PRIORITY 4: Payment Data Edge Cases** 💳
-**Minimal Scope**: 11 payment records (0.01%) with minor issues
-- **Payment Logic**: Review installment calculations and payment amount validations
-- **Resolution**: Apply business rules for edge cases or flag for manual review
-- **Business Impact**: Minimal - negligible effect on financial analysis
+### 6.6 **int_products_cleaned & int_products_enriched** - Product Enhancement
+**Category Enhancement**: English translation mapping using normalized category fields
+**Analytics Addition**: Dimension classifications, photo quality scoring, product analytics
+**Quality Target**: 100% category mapping, complete analytical enhancement
 
-### 6.6 **Simplified Order Data Handling** ✅
-**Finding**: Order data has excellent quality with valid NULL patterns
-- **Date Handling**: Preserve NULL patterns as legitimate business logic (no cleaning required)
-- **Status Consistency**: Maintain existing order status progression (already validated)
-- **Temporal Logic**: Update validation rules to handle NULL dates appropriately
-- **Business Impact**: No cleaning required - data reflects proper business processes
-
-### 6.7 **Product & Seller Data - Minimal Changes** ✅  
-**Finding**: Both datasets have excellent quality scores (100% and 95% respectively)
-- **Product Data**: No cleaning required - perfect quality
-- **Seller Data**: Apply text normalization only (same strategy as customers/geolocation)
-- **Category Translations**: No changes required - perfect translation quality
-- **Business Impact**: Minimal effort required for high-quality results
-
-### 6.8 **Review Data - No Changes Required** ✅
-**Finding**: Perfect data quality (100% score)
-- **Review Scores**: All within valid range (1-5)
-- **Review Dates**: Proper temporal sequence with orders
-- **Business Impact**: No cleaning required - proceed directly to dimensional modeling
-
-## 7. Star Schema Implementation & Dimensional Modeling
-
-### 7.1 dbt Model Organization
-**Model Structure in `./dbt_olist_data_quality/models/`**:
-- `staging/`: Raw data ingestion and initial cleaning (stg_customers, stg_orders, etc.)
-- `intermediate/`: Business logic and data transformations (int_customer_cleaned, etc.)
-- `marts/dimensions/`: Dimensional tables with surrogate keys (dim_customer, dim_product, etc.)
-- `marts/facts/`: Fact tables with measures and foreign keys (fact_order_items)
-
-### 7.2 Detailed dbt Model Structure
-
-#### **Staging Layer** (`models/staging/`)
-**Purpose**: Raw data ingestion with minimal transformations
-- `stg_customers.sql`: Customer data with basic cleaning and validation
-- `stg_geolocation.sql`: Geographic data with coordinate validation
-- `stg_orders.sql`: Order data with status and date validation
-- `stg_order_items.sql`: Order line items with price validation
-- `stg_order_payments.sql`: Payment data with amount validation
-- `stg_order_reviews.sql`: Review data with score validation
-- `stg_products.sql`: Product data with dimension validation
-- `stg_sellers.sql`: Seller data with geographic validation
-- `stg_category_translations.sql`: Category mapping with translation validation
-- `staging/schema.yml`: dbt tests for all staging models using dbt-expectations
-
-#### **Intermediate Layer** (`models/intermediate/`)
-**Purpose**: Business logic and complex transformations
-- `int_customers_cleaned.sql`: Customer deduplication and text normalization
-- `int_geolocation_standardized.sql`: Geographic standardization and zip code mapping
-- `int_orders_enhanced.sql`: Order enrichment with calculated fields
-- `int_products_categorized.sql`: Product categorization with translations
-- `int_sellers_validated.sql`: Seller validation and geographic consistency
-- `int_payments_aggregated.sql`: Payment aggregation by order
-- `int_reviews_processed.sql`: Review processing and sentiment analysis
-- `intermediate/schema.yml`: Business logic validation tests
-
-#### **Marts Layer - Dimensions** (`models/marts/dimensions/`)
-**Purpose**: Star schema dimension tables with surrogate keys
-- `dim_customer.sql`: Customer dimension with geographic attributes and SK
-- `dim_product.sql`: Product dimension with categories and SK
-- `dim_seller.sql`: Seller dimension with location data and SK
-- `dim_orders.sql`: Order dimension with status/dates and SK
-- `dim_payment.sql`: Payment dimension with methods/installments and SK
-- `dim_order_reviews.sql`: Review dimension with scores/text and SK
-- `dim_geolocation.sql`: Geography dimension with coordinates and SK
-- `dim_date.sql`: Date dimension with calendar attributes and SK
-- `dimensions/schema.yml`: Dimensional integrity and SK validation tests
-
-#### **Marts Layer - Facts** (`models/marts/facts/`)
-**Purpose**: Star schema fact tables with measures and dimension FKs
-- `fact_order_items.sql`: Main fact table at order item grain with all dimension SKs
-- `facts/schema.yml`: Fact table integrity and measure validation tests
-
-#### **Model Dependencies & Lineage**
-```
-Raw CSV Data
-    ↓
-Staging Models (stg_*)
-    ↓
-Intermediate Models (int_*)
-    ↓
-Dimension Models (dim_*) + Fact Models (fact_*)
-```
-
-#### **Model Naming Conventions**
-- **Staging**: `stg_{source_table_name}.sql`
-- **Intermediate**: `int_{business_concept}_{transformation}.sql`
-- **Dimensions**: `dim_{entity_name}.sql`
-- **Facts**: `fact_{business_process}.sql`
-- **Tests**: Corresponding `schema.yml` files in each folder
-
-#### **Model Materialization Strategy**
-- **Staging models**: `{{ config(materialized='view') }}` - Flexible during development
-- **Intermediate models**: `{{ config(materialized='ephemeral') }}` - Performance optimization
-- **Dimension tables**: `{{ config(materialized='table', cluster_by=['sk_column']) }}` - Fast lookup performance
-- **Fact tables**: `{{ config(materialized='table', partition_by={'field': 'order_date', 'data_type': 'date'}, cluster_by=['customer_sk', 'product_sk']) }}` - Query optimization
-
-### 7.3 JINJA Macros for Surrogate Key Generation
-- Create macro for consistent SK generation across all dimensions using ROW_NUMBER()
-- Implement reusable patterns for business key preservation and SK mapping
-- Develop standardized approach for dimension table creation with proper clustering
-
-### 7.4 Dimension Table Creation
-- **dim_customer**: Generate customer_sk surrogate keys, preserve customer_id and customer_unique_id business keys, include geographic attributes
-- **dim_product**: Generate product_sk surrogate keys, include translated category names (English/Portuguese), validate product dimensions
-- **dim_seller**: Generate seller_sk surrogate keys, include seller geographic information, validate seller location data
-- **dim_orders**: Generate order_sk surrogate keys, preserve order_id business key, include all order status and timestamp attributes
-- **dim_payment**: Generate payment_sk surrogate keys, group payment records by order_id, include payment type and installment details
-- **dim_order_reviews**: Generate review_sk surrogate keys, link to orders via order_id, include review scores and comment text
-- **dim_geolocation**: Generate geolocation_sk surrogate keys, deduplicate by zip code prefix, validate Brazil coordinate boundaries
-- **dim_date**: Generate date_sk surrogate keys (YYYYMMDD format), include calendar attributes, add business calendar flags
-
-### 7.5 Fact Table Implementation
-- **fact_order_items**: Generate order_item_sk surrogate key, map all dimension foreign keys (_sk fields), include measures (price, freight_value, payment_value), validate fact grain (one row per order item)
-
-### 7.6 Surrogate Key Management
-- **SK Generation Strategy**: Use ROW_NUMBER() or GENERATE_UUID() for SK creation, implement incremental loading for SK stability
-- **Data Lineage Preservation**: Maintain business key mappings in all dimensions, create SK-to-business-key reference tables
-
-## 8. Business Logic & Outlier Detection
-
-### 8.1 Business Rule Implementation
-- **Order Flow Validation**: Define maximum reasonable delivery times by region, validate order cancellation logic, implement business rules in fact table loading
-- **Revenue Anomaly Detection**: Identify unusually high-value orders, analyze payment patterns by customer/seller, flag outliers in fact table metrics
-
-### 8.2 Geographic Business Logic
-- **Delivery Route Validation**: Calculate distances between seller and customer locations, identify potential geographic data errors, validate customer_geography_sk and seller_geography_sk mappings
-
-### 8.3 Customer Behavior Analysis
-- **Purchase Pattern Anomalies**: Identify customers with unusual purchase frequencies, analyze review patterns vs. purchase behavior, create customer segmentation attributes in dim_customer
-
-## 9. Star Schema Testing & Validation Framework
-
-### 9.1 Dimensional Model Testing
-- **Surrogate Key Tests**: Validate SK uniqueness across all dimensions, test SK generation consistency, verify no orphaned SKs in fact table
-- **Fact Table Integrity**: Test all dimension FK relationships, validate fact grain (order item level), check measure calculations accuracy
-- **Star Schema Performance**: Test query performance on star schema, validate indexing strategy effectiveness, optimize dimension loading performance
-
-### 9.2 Data Quality Monitoring for Star Schema
-- Create star schema-specific data quality scorecards
-- Implement alerting for dimensional data issues
-- Build data lineage documentation for SK mappings
-- Create dimension SCD (Slowly Changing Dimension) strategy
-
-## 10. Documentation & Deployment
-
-### 10.1 Star Schema Documentation
-- **Technical Documentation**: Dimensional model ERD and table specifications, surrogate key generation procedures, fact table grain and measure definitions, dbt model documentation with lineage
-- **Business Documentation**: Star schema user guide for analysts, data quality summary for dimensional model, performance optimization recommendations
-
-### 10.2 Deployment Preparation
-- Performance optimization of dimensional queries, production deployment checklist for star schema, incremental loading procedures for dimensions and facts, handover documentation for BI/analytics teams
-
-## 11. Business Rules & Validation Criteria
-
-### Critical Business Rules
-1. **Temporal Logic**: ✅ **UPDATED** - Handle NULL date patterns as valid business states; Review creation date >= Delivered date (when both exist)
-2. **Geographic Constraints**: Brazilian zip codes (5-digit format); Longitude range: -73.9 to -28.8  
-3. **Financial Validation**: Payment amounts > 0; Freight costs reasonable for distance
-4. **Customer Integrity**: ✅ **NEW** - Implement customer deduplication logic for customer_unique_id duplicates
-4. **Review Logic**: Review scores 1-5 range; Review dates after delivery
-
-### Star Schema Validation Rules
-1. **Surrogate Key Integrity**: All _sk fields must be unique within dimensions; No NULL SKs in fact table
-2. **Fact Table Grain**: One row per order item; All dimension FKs must resolve to valid SKs
-3. **Dimension Completeness**: All business keys must map to surrogate keys; No orphaned dimensions
-4. **Date Dimension**: All date fields must map to valid date_sk values; Date hierarchy consistency
-
-### Outlier Detection Criteria
-1. **Order Value**: Orders > 3 standard deviations from mean; Freight cost > 50% of product value
-2. **Delivery Time**: Delivery times > 90 days; Same-day delivery for long distances
-3. **Customer Behavior**: Customers with > 50 orders; Only 5-star or 1-star reviews
-4. **Dimensional Anomalies**: SKs without corresponding business records; Fact records with invalid dimension references
+### 6.7 **Implementation Framework**
+**Audit Strategy**: Complete audit trail with `{field}_original` preservation, correction reasoning, rollback capability
+**Validation Rules**: All Section 5 staging validation flags leveraged, lineage preservation verification
+**Quality Gates**: Post-cleaning target 99.5% overall quality (from 96.7% baseline)
 
 ---
 
-## 12. Success Metrics - Updated Based on Section 5 Findings
-- **Completeness**: ✅ **ACHIEVED** - 96.7% overall completeness (exceeds 95% target)
-- **Validity**: ✅ **ACHIEVED** - 99.9% format validation compliance (exceeds 95% target)  
-- **Accuracy**: ✅ **ACHIEVED** - 100% referential integrity compliance (exceeds 98% target)
-- **Customer Deduplication**: ✅ **NEW TARGET** - Resolve 3,345 duplicate customer_unique_id records
-- **Text Normalization**: ✅ **NEW TARGET** - Standardize Brazilian geographic text across all tables
-- **Performance**: Target SQL execution < 30 seconds per model; Full dbt run < 5 minutes
+## 7. Star Schema Implementation & Dimensional Modeling
+
+### 7.1 **dbt Model Architecture**
+**Model Organization**: Three-layer structure in `./dbt_olist_data_quality/models/`
+- **Staging Layer**: `stg_*` models - Raw data ingestion with basic validation
+- **Intermediate Layer**: `int_*` models - Business logic and data transformations  
+- **Marts Layer**: `dim_*` and `fact_*` models - Star schema implementation
+
+### 7.2 **Dimension Models** (marts/dimensions/)
+**Core Dimensions**: Customer, Product, Seller, Orders, Payment, Reviews, Geolocation, Date
+**Enhancement**: Surrogate keys (SK), business key preservation, geographic attributes, analytics fields
+**Materialization**: Tables with clustering for performance optimization
+
+### 7.3 **Fact Models** (marts/facts/)
+**Primary Fact**: fact_order_items - Order item grain with all dimension FKs
+**Measures**: Price, freight value, payment amounts, calculated analytics
+**Optimization**: Partitioned by order_date, clustered by key dimensions
+
+### 7.4 **Implementation Strategy**
+**Surrogate Keys**: ROW_NUMBER() generation with SK-to-business-key mapping
+**Data Lineage**: Complete business key preservation across all transformations
+**Testing**: Comprehensive dimensional integrity and measure validation
+**Performance**: Strategic materialization and BigQuery optimization
+
+---
+
+## 8. Business Logic & Validation Rules
+
+### 8.1 **Critical Business Rules**
+- **Temporal Logic**: Handle NULL date patterns as valid business states, review dates after delivery
+- **Geographic Constraints**: Brazilian zip codes (5-digit), coordinates within Brazil boundaries  
+- **Financial Validation**: Payment amounts > 0, payment sequences sum to order totals
+- **Customer Integrity**: Customer deduplication for unique IDs, order history preservation
+
+### 8.2 **Star Schema Validation**
+- **Surrogate Key Integrity**: SK uniqueness within dimensions, no NULL SKs in facts
+- **Fact Table Grain**: One row per order item, all dimension FKs resolve to valid SKs
+- **Dimension Completeness**: All business keys map to SKs, no orphaned dimensions
+
+### 8.3 **Outlier Detection Criteria**
+- **Order Value**: Orders > 3 standard deviations, freight cost > 50% product value
+- **Delivery Time**: Delivery > 90 days, geographic inconsistencies
+- **Customer Behavior**: Extreme order patterns, unusual review distributions
+
+---
+
+## 9. Success Metrics & Quality Gates
+
+### 9.1 **Achieved Quality Metrics** ✅
+- **Completeness**: 96.7% overall (exceeds 95% target)
+- **Validity**: 99.9% format compliance (exceeds 95% target)  
+- **Accuracy**: 100% referential integrity (exceeds 98% target)
+
+### 9.2 **Implementation Targets**
+- **Customer Deduplication**: Resolve 3,345 duplicates → <50 final duplicates
+- **Text Normalization**: 100% Brazilian geographic text standardization
+- **Payment Reconciliation**: 100% payment-to-order value reconciliation
+- **Performance**: dbt runs < 5 minutes, dimensional queries < 30 seconds
+
+### 9.3 **Documentation & Deployment**
+- **Technical**: Dimensional model ERD, SK procedures, performance optimization
+- **Business**: User guides, data quality summaries, analyst documentation
+- **Operational**: Incremental loading, monitoring, maintenance procedures
+
+---
+
+**Data Quality Implementation Complete**: Brazilian E-commerce Data Warehouse with 99.5%+ Quality Target

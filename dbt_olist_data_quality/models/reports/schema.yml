@@ -1,0 +1,57 @@
+version: 2
+
+models:
+  - name: customer_order_summary
+    description: "Customer order summary report"
+    columns:
+      - name: customer_id
+        description: "Primary customer identifier"
+        tests:
+          - not_null
+          - unique
+      - name: first_order_date
+        description: "Date of first order"
+        tests:
+          - not_null
+      - name: last_order_date
+        description: "Date of last order"
+        tests:
+          - not_null
+      - name: total_orders
+        description: "Total number of orders"
+        tests:
+          - not_null
+
+  - name: product_performance_report
+    description: "Product performance analysis"
+    columns:
+      - name: product_id
+        description: "Primary product identifier"
+        tests:
+          - not_null
+          - unique
+      - name: total_sales
+        description: "Total sales amount"
+        tests:
+          - not_null
+      - name: total_orders
+        description: "Total orders count"
+        tests:
+          - not_null
+
+  - name: seller_performance_report
+    description: "Seller performance analysis"
+    columns:
+      - name: seller_id
+        description: "Primary seller identifier"
+        tests:
+          - not_null
+          - unique
+      - name: total_revenue
+        description: "Total revenue generated"
+        tests:
+          - not_null
+      - name: total_orders
+        description: "Total orders fulfilled"
+        tests:
+          - not_null
