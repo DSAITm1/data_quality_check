@@ -1,45 +1,6 @@
 version: 2
 
 models:
-  - name: int_order_customer_first_last
-    description: "Intermediate: Customer first and last order metrics"
-    columns:
-      - name: customer_id
-        description: "Primary customer identifier"
-        tests:
-          - not_null
-          - unique
-
-  - name: int_order_items_summary
-    description: "Intermediate: Order items summary with price calculations"
-    columns:
-      - name: order_id
-        description: "Primary order identifier"
-        tests:
-          - not_null
-          - unique
-      - name: total_items
-        description: "Total items in order"
-        tests:
-          - not_null
-      - name: total_value
-        description: "Total order value"
-        tests:
-          - not_null
-
-  - name: int_order_payments_agg
-    description: "Intermediate: Aggregated order payments"
-    columns:
-      - name: order_id
-        description: "Primary order identifier"
-        tests:
-          - not_null
-          - unique
-      - name: total_payment_value
-        description: "Total payment amount"
-        tests:
-          - not_null
-
   - name: int_customers_cleaned
     description: "Intermediate: Deduplicated and cleaned customer data with Brazilian text normalization"
     columns:
@@ -57,19 +18,36 @@ models:
         tests:
           - not_null
 
-  - name: int_geolocation_standardized
-    description: "Intermediate: Geolocation data with coordinate corrections and text normalization"
+  - name: int_geolocation_consolidated
+    description: "Intermediate: Consolidated geolocation data with optimized coordinates and missing data estimation"
     columns:
       - name: geolocation_zip_code_prefix
         description: "ZIP code prefix"
         tests:
           - not_null
-      - name: geolocation_lat_corrected
-        description: "Corrected latitude coordinate"
+      - name: geolocation_lat_consolidated
+        description: "Consolidated latitude coordinate"
         tests:
           - not_null
-      - name: geolocation_lng_corrected
-        description: "Corrected longitude coordinate"  
+      - name: geolocation_lng_consolidated
+        description: "Consolidated longitude coordinate"  
+        tests:
+          - not_null
+
+  - name: int_orders_enriched
+    description: "Intermediate: Order data with lifecycle analytics and temporal validation"
+    columns:
+      - name: order_id
+        description: "Primary order identifier"
+        tests:
+          - not_null
+          - unique
+      - name: customer_id
+        description: "Customer identifier"
+        tests:
+          - not_null
+      - name: order_status_clean
+        description: "Standardized order status"
         tests:
           - not_null
 
@@ -89,6 +67,32 @@ models:
         tests:
           - not_null
 
+  - name: int_products_cleaned
+    description: "Intermediate: Product data with category normalization and validation"
+    columns:
+      - name: product_id
+        description: "Primary product identifier"
+        tests:
+          - not_null
+          - unique
+      - name: product_category_name_clean
+        description: "Cleaned category name"
+        tests:
+          - not_null
+
+  - name: int_products_enriched
+    description: "Intermediate: Enhanced product data with analytics attributes"
+    columns:
+      - name: product_id
+        description: "Primary product identifier"
+        tests:
+          - not_null
+          - unique
+      - name: product_category_enhanced
+        description: "Enhanced category with analytics"
+        tests:
+          - not_null
+
   - name: int_sellers_cleaned
     description: "Intermediate: Seller data with Brazilian text normalization"
     columns:
@@ -99,18 +103,5 @@ models:
           - unique
       - name: seller_state_normalized
         description: "Normalized state name"
-        tests:
-          - not_null
-
-  - name: int_products_cleaned
-    description: "Intermediate: Product data with category normalization and derived analytics"
-    columns:
-      - name: product_id
-        description: "Primary product identifier"
-        tests:
-          - not_null
-          - unique
-      - name: product_category_normalized
-        description: "Normalized category name"
         tests:
           - not_null

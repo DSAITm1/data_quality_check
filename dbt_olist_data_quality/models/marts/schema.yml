@@ -32,6 +32,68 @@ models:
           - not_null
           - unique
 
+  - name: dim_payments
+    description: "Payment dimension table with payment type analytics"
+    columns:
+      - name: payment_sk
+        description: "Payment surrogate key"
+        tests:
+          - not_null
+          - unique
+      - name: order_id
+        description: "Order business key"
+        tests:
+          - not_null
+      - name: payment_type
+        description: "Payment method type"
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['CREDIT_CARD', 'BOLETO', 'VOUCHER', 'DEBIT_CARD', 'NOT_DEFINED']
+
+  - name: dim_orders
+    description: "Order dimension table with order status analytics"
+    columns:
+      - name: order_sk
+        description: "Order surrogate key"
+        tests:
+          - not_null
+          - unique
+      - name: order_id
+        description: "Order business key"
+        tests:
+          - not_null
+          - unique
+      - name: order_status
+        description: "Current order status"
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['DELIVERED', 'SHIPPED', 'CANCELED', 'UNAVAILABLE', 'INVOICED', 'PROCESSING', 'CREATED', 'APPROVED']
+
+  - name: dim_order_reviews
+    description: "Order review dimension table with sentiment analytics"
+    columns:
+      - name: review_sk
+        description: "Review surrogate key"
+        tests:
+          - not_null
+          - unique
+      - name: review_id
+        description: "Review business key"
+        tests:
+          - unique
+      - name: order_id
+        description: "Order business key"
+        tests:
+          - not_null
+      - name: review_score
+        description: "Review rating score (1-5)"
+        tests:
+          - not_null
+          - accepted_values:
+              values: [1, 2, 3, 4, 5]
+
   - name: fact_orders
     description: "Order fact table"
     columns:
